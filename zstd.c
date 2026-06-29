@@ -20,7 +20,6 @@ static ZSTD_CCtx *cctx;
 static ZSTD_DCtx *dctx;
 
 void _PG_init(void);
-void _PG_fini(void);
 Datum compress(PG_FUNCTION_ARGS);
 Datum decompress(PG_FUNCTION_ARGS);
 Datum length(PG_FUNCTION_ARGS);
@@ -34,15 +33,6 @@ void _PG_init(void)
     dctx = ZSTD_createDCtx();
     if (!dctx)
         elog(FATAL, "ZSTD_createDCtx failed");
-}
-
-void _PG_fini(void)
-{
-    if (cctx)
-        ZSTD_freeCCtx(cctx);
-
-    if (dctx)
-        ZSTD_freeDCtx(dctx);
 }
 
 PG_FUNCTION_INFO_V1(compress);
