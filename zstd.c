@@ -3,6 +3,7 @@
 #include <varatt.h>
 #endif
 #include <fmgr.h>
+#include <utils/memutils.h>
 #include <zstd.h>
 
 #ifdef PG_MODULE_MAGIC
@@ -110,6 +111,16 @@ Datum decompress(PG_FUNCTION_ARGS)
 #else
     out_len = ZSTD_getDecompressedSize(VARDATA(in), in_len);
 #endif
+    /*
+     * The decompressed size is taken from the (untrusted) frame header, so
+     * reject anything larger than a palloc can satisfy before attempting the
+     * allocation. This turns a hostile/corrupt frame into a clear error rather
+     * than an opaque "invalid memory alloc request size" failure.
+     */
+    if (out_len > MaxAllocSize - VARHDRSZ)
+        elog(ERROR, "zstd frame claims decompressed size %zu, which exceeds the maximum of %zu",
+             out_len, (size_t) (MaxAllocSize - VARHDRSZ));
+
     out = palloc(out_len + VARHDRSZ);
 
     out_len = ZSTD_decompress_usingDict(dctx, VARDATA(out), out_len, VARDATA(in), in_len, dict, dict_len);
